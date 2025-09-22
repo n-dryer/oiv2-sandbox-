@@ -1,7 +1,7 @@
 import asyncio, json, argparse
 from .cli_utils import Text, Spinner
 from .interpreter import Interpreter
-from .conversations import Message
+from .conversation import Message
 from .structured import TaggedResponse, ToolCall
 from .tools.tools import ToolRegistry
 from .streamed_tag_parser import StreamTaggedResponse

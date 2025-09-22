@@ -1,5 +1,5 @@
 from .tools import function_tool, ToolRegistry
-from ..conversations import Message
+from ..conversation import Message
 
 @function_tool
 def list_tools() -> Message:
