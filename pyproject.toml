@@ -10,7 +10,9 @@ dependencies = [
 ]
 
 [project.scripts]
+interpreter = "oiv2.cli:main"
 oiv2 = "oiv2.cli:main"
+oiv2-setup = "oiv2.setup:check"
 
 [build-system]
 requires = ["hatchling"]
