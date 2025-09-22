@@ -9,6 +9,7 @@ Tool definition + registry that works out-of-the-box with DSPy.
 from __future__ import annotations
 from typing import Dict, Any, Callable, Type, List, get_type_hints
 import inspect
+import json
 from pydantic import BaseModel
 import dspy
 
@@ -49,18 +50,24 @@ class ToolRegistry:
         sig = inspect.signature(func)
         hints = get_type_hints(func)
 
-        # Build the OpenAI-style parameter schema
+        # Build JSON Schema for OpenAI/LiteLLM function calling
         properties = {}
         required = []
+
         for name, param in sig.parameters.items():
-            if name in ("self", "cls"):
+            if name in {"self", "cls"}:
                 continue
-            if param.default is inspect.Parameter.empty:
-                required.append(name)
+
+            param_type = hints.get(name, str)
+            json_type = cls._TYPE_MAP.get(param_type, "string")
+
             properties[name] = {
-                "type": cls._TYPE_MAP.get(hints.get(name, str), "string"),
-                "description": f"{name} parameter",
+                "type": json_type,
+                "description": f"Parameter {name} of type {param_type.__name__}",
             }
+
+            if param.default == inspect.Parameter.empty:
+                required.append(name)
 
         schema = {
             "name": func.__name__,
@@ -102,6 +109,25 @@ class ToolRegistry:
     def get_dspy_tools(cls) -> List[dspy.Tool]:
         """Return tools ready to hand to DSPy ReAct."""
         return cls._dspy_tools
+    
+    @classmethod
+    def get_all_tools(cls) -> Dict[str, Dict[str, str]]: 
+        return {
+            name: {
+                param: "your input here"  # Simplified to just show it needs input
+                for param in tool.function['parameters']['properties']
+            }
+            for name, tool in cls._tools.items()
+        }
+
+    @classmethod
+    def dispatch(cls, call: Dict[str, Any]) -> Any:
+        try:
+            tool_name = call["function"]["name"]
+            args = json.loads(call["function"]["arguments"]) if isinstance(call["function"]["arguments"], str) else call["function"]["arguments"]
+            return cls._tools.get(tool_name, lambda **_: {"role": "tool", "message": f"Tool {tool_name} not found"})(**args)
+        except Exception as e:
+            return {"role": "tool", "message": f"Error executing tool {tool_name}: {str(e)}"}
 
 
 # Convenience alias so users can simply write `@function_tool`
